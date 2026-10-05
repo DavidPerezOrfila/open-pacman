@@ -1,0 +1,3 @@
+# AutoCreateBranch: true  -> /spec-impl crea la rama spec-NN-slug sin preguntar (default)
+#                   false -> /spec-impl pide confirmación [y/N] antes de crear la rama
+AutoCreateBranch: true
