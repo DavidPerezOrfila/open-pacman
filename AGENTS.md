@@ -6,7 +6,7 @@ Vanilla JS + HTML + CSS. **No build, no bundler, no package.json, no tests, no l
 
 Open `src/index.html` directly in the browser (`file://` works). There is no dev server.
 
-The only verification available is manual: load the page, check the console is clean, play. Say so explicitly in your report instead of claiming tests passed.
+Manual verification: load the page, check the console is clean, play. There is also an e2e harness with no dependencies: open `tests/e2e.html` in the browser (or `chrome --headless=new --dump-dom tests/e2e.html`); its summary line must read `E2E PASS`.
 
 ## Architecture
 
