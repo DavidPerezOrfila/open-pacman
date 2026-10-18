@@ -152,18 +152,23 @@ test( 'puerta: bloquea a pacman', () => {
   }
 } );
 
-test( 'puerta: el fantasma la cruza (pacman no)', () => {
+test( 'corral: los 4 fantasmas salen en 600 frames', () => {
   const g = createGame();
-  const ghost = g.ghosts[ 0 ];
-  ghost.x = 13;
-  ghost.y = 11;
-  ghost.dir = 'down';
-  let cruzo = false;
-  for ( let f = 0; f < 30; f++ ) {
+  g.state = 'playing';
+  // Pacman aparcado en un muro: partida determinista, sin resets.
+  g.pacman.x = 5;
+  g.pacman.y = 23;
+  g.pacman.dir = 'left';
+  const minY = [ 99, 99, 99, 99 ];
+  for ( let f = 0; f < 600; f++ ) {
     update( g );
-    if ( Math.round( ghost.x ) === 13 && Math.round( ghost.y ) >= 13 ) cruzo = true;
+    g.ghosts.forEach( ( ghost, i ) => {
+      minY[ i ] = Math.min( minY[ i ], Math.round( ghost.y ) );
+    } );
   }
-  esIgual( cruzo, true );
+  minY.forEach( ( y, i ) => {
+    if ( y > 11 ) fallo( 'fantasma ' + i + ' nunca salio del corral (min y=' + y + ')' );
+  } );
 } );
 
 // --- 8. Movimiento de pacman intacto ---

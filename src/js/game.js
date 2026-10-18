@@ -119,7 +119,9 @@ function decideGhost( game, g, i ) {
   const choices = options.length ? options : [ '' + OPPOSITE[ g.dir ] ];
 
   // Target geometrico segun la personalidad del fantasma (ghosts.js).
-  const t = GHOSTS[ i ].target( game );
+  // Dentro del corral: salir por la puerta hacia (13,11) antes de perseguir.
+  const enCorral = Math.round( g.y ) >= 12 && Math.round( g.x ) >= 11 && Math.round( g.x ) <= 16;
+  const t = enCorral ? { x: 13, y: 11 } : GHOSTS[ i ].target( game );
   let best = choices[ 0 ];
   let bestDist = Infinity;
   for ( const dir of choices ) {

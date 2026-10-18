@@ -59,7 +59,7 @@ Cada fantasma del estado de `createGame()` se identifica por su índice en `GHOS
 - [x] Ningún fantasma atraviesa muros y la puerta del corral sigue bloqueando a Pac-Man pero no a los fantasmas.
 - [x] El movimiento de Pac-Man (velocidad, giros, túnel) queda idéntico al actual.
 
-> **Hallazgo del e2e (ajeno a esta spec):** los fantasmas no salen nunca del corral — `decideGhost()` nunca elige subir hacia la puerta porque el movimiento lateral siempre acorta o empata. Es previo a esta spec (ya ocurría con 2 fantasmas); la persecución no es observable en partida hasta arreglarlo.
+> **Hallazgo del e2e (ajeno a esta spec):** los fantasmas no salían nunca del corral — `decideGhost()` nunca elegía subir hacia la puerta porque el movimiento lateral siempre acorta o empata (ya ocurría con 2 fantasmas). Corregido en `decideGhost()`: dentro del corral el target es la casilla de salida `(13,11)`; cubierto por el test e2e `corral`.
 
 ## Decisiones
 
