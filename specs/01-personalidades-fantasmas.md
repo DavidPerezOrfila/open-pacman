@@ -1,6 +1,6 @@
 # SPEC 01 — Personalidades de los cuatro fantasmas
 
-> **Estado:** Approved
+> **Estado:** Implemented
 > **Depende de:** Ninguna
 > **Fecha:** 2026-10-05
 > **Objetivo:** Cada fantasma persigue con su lógica clásica de arcade (Blinky agresivo directo, Pinky embosca, Inky flanquea, Clyde tímido), aislada en un módulo propio `src/js/ghosts.js`.
@@ -48,14 +48,18 @@ Cada fantasma del estado de `createGame()` se identifica por su índice en `GHOS
 
 ## Criterios de aceptación
 
-- [ ] `src/index.html` carga `ghosts.js` entre `maze.js` y `game.js` y la consola queda limpia.
-- [ ] Los cuatro fantasmas se dibujan con colores distintos: rojo, rosa, cian y naranja.
-- [ ] Blinky (rojo) se dirige siempre hacia la casilla actual de Pac-Man.
-- [ ] Pinky (rosa) se dirige a la casilla situada 4 celdas delante de Pac-Man según su dirección de movimiento.
-- [ ] Inky (cian) se dirige al punto simétrico de Blinky respecto al punto situado 2 celdas delante de Pac-Man.
-- [ ] Clyde (naranja) persigue a más de 8 casillas (Manhattan) y se retira a su `corner` a 8 o menos.
-- [ ] Ningún fantasma atraviesa muros y la puerta del corral sigue bloqueando a Pac-Man pero no a los fantasmas.
-- [ ] El movimiento de Pac-Man (velocidad, giros, túnel) queda idéntico al actual.
+> Verificación automatizada: abrir `tests/e2e.html` en el navegador (o `chrome --headless=new --dump-dom tests/e2e.html`); el resumen debe decir `E2E PASS`.
+
+- [x] `src/index.html` carga `ghosts.js` entre `maze.js` y `game.js` y la consola queda limpia.
+- [x] Los cuatro fantasmas se dibujan con colores distintos: rojo, rosa, cian y naranja.
+- [x] Blinky (rojo) se dirige siempre hacia la casilla actual de Pac-Man.
+- [x] Pinky (rosa) se dirige a la casilla situada 4 celdas delante de Pac-Man según su dirección de movimiento.
+- [x] Inky (cian) se dirige al punto simétrico de Blinky respecto al punto situado 2 celdas delante de Pac-Man.
+- [x] Clyde (naranja) persigue a más de 8 casillas (Manhattan) y se retira a su `corner` a 8 o menos.
+- [x] Ningún fantasma atraviesa muros y la puerta del corral sigue bloqueando a Pac-Man pero no a los fantasmas.
+- [x] El movimiento de Pac-Man (velocidad, giros, túnel) queda idéntico al actual.
+
+> **Hallazgo del e2e (ajeno a esta spec):** los fantasmas no salen nunca del corral — `decideGhost()` nunca elige subir hacia la puerta porque el movimiento lateral siempre acorta o empata. Es previo a esta spec (ya ocurría con 2 fantasmas); la persecución no es observable en partida hasta arreglarlo.
 
 ## Decisiones
 
@@ -70,12 +74,12 @@ Cada fantasma del estado de `createGame()` se identifica por su índice en `GHOS
 
 ## Riesgos
 
-| Riesgo                                         | Mitigación                                                                   |
-| ---------------------------------------------- | ---------------------------------------------------------------------------- |
-| Targets de Pinky/Inky caen sobre muros o fuera | Son puntos geométricos: el algoritmo de dirección no exige celda transitable |
-| Inky depende del fantasma 0 (Blinky)           | Fijar el mapeo de índices en un comentario de `ghosts.js`                    |
-| Añadir Inky y Clyde cambia el número de fantasmas | Índices fijados en `GHOST_STARTS` y verificación manual al cerrar el paso  |
-| Cambiar el targeting altera la dificultad      | Verificación manual de cada paso antes de pasar al siguiente                 |
+| Riesgo                                            | Mitigación                                                                   |
+| ------------------------------------------------- | ---------------------------------------------------------------------------- |
+| Targets de Pinky/Inky caen sobre muros o fuera    | Son puntos geométricos: el algoritmo de dirección no exige celda transitable |
+| Inky depende del fantasma 0 (Blinky)              | Fijar el mapeo de índices en un comentario de `ghosts.js`                    |
+| Añadir Inky y Clyde cambia el número de fantasmas | Índices fijados en `GHOST_STARTS` y verificación manual al cerrar el paso    |
+| Cambiar el targeting altera la dificultad         | Verificación manual de cada paso antes de pasar al siguiente                 |
 
 ## Qué NO entra en esta spec
 
