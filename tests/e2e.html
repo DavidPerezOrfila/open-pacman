@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>E2E - spec 01</title>
+  <style>
+    body { font-family: monospace; background: #111; color: #ddd; padding: 16px; }
+    h1 { font-size: 1em; }
+    .ok { color: #66ff66; }
+    .fallo { color: #ff6666; }
+  </style>
+</head>
+<body>
+  <h1>E2E - Personalidades de los cuatro fantasmas</h1>
+  <!-- Mismo orden de scripts que src/index.html, salvo main.js: necesita
+       canvas y teclado propios y la spec 01 no lo toca. -->
+  <script src="../src/js/maze.js"></script>
+  <script src="../src/js/ghosts.js"></script>
+  <script src="../src/js/game.js"></script>
+  <script src="../src/js/render.js"></script>
+  <canvas id="canvas-test" width="560" height="620" hidden></canvas>
+  <pre id="e2e-summary"></pre>
+  <ul id="e2e-results"></ul>
+  <script src="e2e.js"></script>
+</body>
+</html>
