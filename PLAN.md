@@ -20,3 +20,25 @@ targeting clasico de arcade (Blinky directo, Pinky embosca, Inky flanquea, Clyde
 
 - Automatica: `node --check` + smoke `%TEMP%\opencode\pacman-smoke.js` y `pacman-targets.js`.
 - Manual: abrir `src/index.html`, consola limpia, jugar.
+
+---
+
+# PLAN — Spec 02: Modos scatter y chase
+
+Objetivo: alternar 7 s de retirada a las esquinas con 20 s de persecución, con
+media vuelta al cambiar de fase, sin sacar la IA de `src/js/ghosts.js`.
+
+- Spec: `specs/02-scatter-chase.md` (Implemented)
+- Rama: `spec-02-scatter-chase`
+
+## Pasos y verificacion
+
+| # | Paso | Verificacion | Estado |
+|---|------|--------------|--------|
+| 1 | `ghosts.js`: `PEN_EXIT` e `insidePen()`; usarlos en `decideGhost()` | el juego va igual | hecho |
+| 2 | `ghosts.js`: `createGhostMode()` y `updateGhostMode()`; llamadas en `game.js` | a los 7 s dan media vuelta | hecho |
+| 3 | `ghosts.js`: `ghostTarget()` con `corner` en scatter | cada fantasma va a su esquina | hecho |
+| 4 | `tests/e2e.js`: 5 casos de fase, target y media vuelta | `E2E PASS 19/19` | hecho |
+
+- Automatica: `node --check` + `chrome --headless=new --dump-dom tests/e2e.html`.
+- Manual: abrir `src/index.html`, consola limpia, jugar una partida completa.
