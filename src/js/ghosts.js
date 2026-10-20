@@ -1,11 +1,22 @@
 // ghosts.js
-// Personalidades de los 4 fantasmas en modo persecucion (chase).
-// Depende de globals de game.js: DIRS.
+// Personalidades de los 4 fantasmas y modos scatter/chase.
+// Depende de globals de game.js: DIRS, OPPOSITE.
 // Mapeo de indices de GHOST_STARTS: 0 blinky, 1 pinky, 2 inky, 3 clyde.
 
 // Casilla actual de Pac-Man, redondeada a celda.
 function pacmanCell( game ) {
   return { x: Math.round( game.pacman.x ), y: Math.round( game.pacman.y ) };
+}
+
+// Casilla de salida sobre la puerta y zona del corral.
+const PEN_EXIT = { x: 13, y: 11 };
+const SCATTER_FRAMES = 7 * 60; // 7s a 60fps
+const CHASE_FRAMES = 20 * 60;  // 20s
+
+function insidePen( g ) {
+  const x = Math.round( g.x );
+  const y = Math.round( g.y );
+  return y >= 12 && x >= 11 && x <= 16;
 }
 
 const GHOSTS = [
@@ -58,3 +69,27 @@ const GHOSTS = [
 ];
 
 window.GHOSTS = GHOSTS;
+
+// --- Modos scatter / chase ---
+
+// Estado inicial de la partida: se esparce sobre game en createGame().
+function createGhostMode() {
+  return { phase: 'scatter', phaseTimer: SCATTER_FRAMES };
+}
+
+// Al agotarse el temporizador cambia de fase; los fantasmas de fuera del
+// corral dan media vuelta (fuera no hay decision en una celda alineada).
+function updateGhostMode( game ) {
+  game.phaseTimer--;
+  if ( game.phaseTimer > 0 ) return;
+  game.phase = game.phase === 'scatter' ? 'chase' : 'scatter';
+  game.phaseTimer = game.phase === 'scatter' ? SCATTER_FRAMES : CHASE_FRAMES;
+  for ( const g of game.ghosts ) {
+    if ( !insidePen( g ) ) g.dir = OPPOSITE[ g.dir ];
+  }
+}
+
+// En scatter cada fantasma vuelve a su esquina; en chase usa su personalidad.
+function ghostTarget( game, i ) {
+  return game.phase === 'scatter' ? GHOSTS[ i ].corner : GHOSTS[ i ].target( game );
+}

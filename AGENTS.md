@@ -2,6 +2,30 @@
 
 Vanilla JS + HTML + CSS. **No build, no bundler, no package.json, no tests, no linter.** Don't add any of those unless a spec explicitly asks for it.
 
+## Engineering principles
+
+- **No backward compatibility.** Delete obsolete paths; no shims, fallbacks or migrations.
+- **Simplest thing that meets current requirements.** No speculative abstractions, config or indirection.
+- **Layered growth.** Smallest end-to-end working version first; add capabilities only on top of a working product.
+- **Modular, separated concerns.**
+- **Reuse before writing.** Use existing project dependencies first, then established libraries. Check docs/types before assuming a capability is missing. No reimplementing common functionality.
+- **Long-term decisions only.** No stopgaps meant to be replaced later.
+
+## Code style
+
+- Replies: short and concise.
+- Code in English (identifiers, functions, classes). Comments in Spanish, only when they add value.
+- Small functions, readable code, DRY, SOLID where applicable.
+- Self-documenting code; no magic or cryptic expressions.
+- Apply security best practices when relevant.
+
+## Line endings
+
+- Repo uses **LF** (`.gitattributes`: `* text=auto eol=lf`). Never commit CRLF.
+- Always write/edit files with LF.
+- On Windows, `core.autocrlf=true` or OneDrive can leave CRLF in the working tree; git may show clean while the committed blob drifts. Verify the blob, not the working tree: `git show HEAD:path | grep -c $'\r'` must be 0.
+- If a committed file has CRLF: convert it to LF, or run `git add --renormalize .` in a dedicated commit.
+
 ## Run it
 
 Open `src/index.html` directly in the browser (`file://` works). There is no dev server.
@@ -10,15 +34,16 @@ Manual verification: load the page, check the console is clean, play. There is a
 
 ## Architecture
 
-Four classic `<script>` files, loaded in this order in `src/index.html`. There are **no ES modules and no imports** — files communicate through globals that each file exports at its bottom via `window.X = X`:
+Five classic `<script>` files, loaded in this order in `src/index.html`. There are **no ES modules and no imports** — files communicate through globals that each file exports at its bottom via `window.X = X`:
 
 - `src/js/maze.js` → level data: `MAZE`, `TUNNEL_ROW`, `PACMAN_START`, `GHOST_STARTS`
+- `src/js/ghosts.js` → ghost AI: `GHOSTS` (color, corner, target) and the scatter/chase mode
 - `src/js/game.js` → rules/state: `createGame`, `update`, `DIRS`
 - `src/js/render.js` → drawing: `draw`
 - `src/js/main.js` → loop, keyboard, overlay screens
 
 Consequences an agent will otherwise get wrong:
-- Adding a new file means adding a `<script>` tag in the right position. Order matters: `maze` → `game` → `render` → `main`.
+- Adding a new file means adding a `<script>` tag in the right position. Order matters: `maze` → `ghosts` → `game` → `render` → `main`.
 - A new global must be explicitly assigned to `window` or other files won't see it.
 
 ## Maze invariants (`src/js/maze.js`)
@@ -51,6 +76,7 @@ Consequences an agent will otherwise get wrong:
 
 The repo exists to practise spec-driven development (README). Skills live in `.agents/skills/` (`spec`, `spec-impl`), pinned by `skills-lock.json` — do not hand-edit those files, reinstalling overwrites them.
 
-- Specs live in `specs/` (does not exist yet); `spec-impl` expects `specs/.spec-config.yml` for branch config.
+- Specs live in `specs/` as `NN-slug.md`; `spec-impl` reads branch config from `specs/.spec-config.yml`.
+- Each spec has its own branch `spec-NN-slug` and its own PR.
 - Specs are written in **Spanish** here (follow the language of existing specs).
 - Each spec implementation step must be commitable on its own.
