@@ -1,6 +1,7 @@
 // game.js
 // Estado y reglas. Depende de globals de maze.js: MAZE, TUNNEL_ROW,
-// PACMAN_START, GHOST_STARTS. Y de ghosts.js: GHOSTS (targeting).
+// PACMAN_START, GHOST_STARTS. Y de ghosts.js: GHOSTS, PEN_EXIT, insidePen,
+// ghostTarget, createGhostMode, updateGhostMode.
 
 const DIRS = {
   left: { x: -1, y: 0 },
@@ -28,6 +29,7 @@ function createGame() {
     score: 0,
     lives: 3,
     dotsRemaining: dots,
+    ...createGhostMode(),
     grid,
     pacman: {
       x: PACMAN_START.x,
@@ -118,10 +120,9 @@ function decideGhost( game, g, i ) {
   // Sin salida (callejon): permitir el giro de 180.
   const choices = options.length ? options : [ '' + OPPOSITE[ g.dir ] ];
 
-  // Target geometrico segun la personalidad del fantasma (ghosts.js).
-  // Dentro del corral: salir por la puerta hacia (13,11) antes de perseguir.
-  const enCorral = Math.round( g.y ) >= 12 && Math.round( g.x ) >= 11 && Math.round( g.x ) <= 16;
-  const t = enCorral ? { x: 13, y: 11 } : GHOSTS[ i ].target( game );
+  // Target geometrico: salir de la puerta si esta en el corral, si no segun
+  // la fase (scatter -> corner, chase -> personalidad).
+  const t = insidePen( g ) ? PEN_EXIT : ghostTarget( game, i );
   let best = choices[ 0 ];
   let bestDist = Infinity;
   for ( const dir of choices ) {
@@ -160,6 +161,7 @@ function resetPositions( game ) {
   p.y = PACMAN_START.y;
   p.dir = 'left';
   p.nextDir = null;
+  Object.assign( game, createGhostMode() );
   game.ghosts.forEach( ( g, i ) => {
     g.x = GHOST_STARTS[ i ].x;
     g.y = GHOST_STARTS[ i ].y;
@@ -172,6 +174,7 @@ function collides( a, b ) {
 }
 
 function update( game ) {
+  updateGhostMode( game );
   movePacman( game );
   game.ghosts.forEach( ( g, i ) => moveGhost( game, g, i ) );
 

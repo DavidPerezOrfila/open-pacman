@@ -1,5 +1,5 @@
 // e2e.js
-// Pruebas e2e de la spec 01 con los scripts reales del juego. Sin dependencias.
+// Pruebas e2e de las specs 01 y 02 con los scripts reales del juego. Sin dependencias.
 
 // La pagina debe cargar limpia: todo error de consola cuenta como fallo.
 let erroresConsola = 0;
@@ -42,6 +42,7 @@ test( 'carga: globals de maze/ghosts/game/render', () => {
   esIgual( GHOSTS.length, 4 );
   esIgual( typeof createGame, 'function' );
   esIgual( typeof update, 'function' );
+  esIgual( typeof updateGhostMode, 'function' );
   esIgual( typeof draw, 'function' );
 } );
 
@@ -126,7 +127,65 @@ test( 'clyde: persigue a >8 y su corner a <=8 (manhattan)', () => {
   celdaEs( GHOSTS[ 3 ].target( g ), GHOSTS[ 3 ].corner.x, GHOSTS[ 3 ].corner.y );
 } );
 
-// --- 7. Muros y puerta del corral ---
+// --- 7. Modos scatter y chase (spec 02) ---
+
+test( 'modo: empieza en scatter con 420 frames', () => {
+  const g = createGame();
+  esIgual( g.phase, 'scatter' );
+  esIgual( g.phaseTimer, 420 );
+} );
+
+test( 'modo: chase a los 420 frames y scatter otra vez a los 1620', () => {
+  const g = createGame();
+  // Pacman aparcado en un muro: partida determinista, sin resets.
+  g.pacman.x = 5;
+  g.pacman.y = 23;
+  g.pacman.dir = 'left';
+  for ( let f = 1; f < 420; f++ ) update( g );
+  esIgual( g.phase, 'scatter' );
+  update( g );
+  esIgual( g.phase, 'chase' );
+  esIgual( g.phaseTimer, 1200 );
+  for ( let f = 0; f < 1200; f++ ) update( g );
+  esIgual( g.phase, 'scatter' );
+  esIgual( g.phaseTimer, 420 );
+} );
+
+test( 'modo: en scatter apunta al corner y en chase a la personalidad', () => {
+  const g = createGame();
+  for ( let i = 0; i < 4; i++ ) {
+    celdaEs( ghostTarget( g, i ), GHOSTS[ i ].corner.x, GHOSTS[ i ].corner.y );
+  }
+  g.phase = 'chase';
+  g.pacman.x = 10;
+  g.pacman.y = 20;
+  celdaEs( ghostTarget( g, 0 ), 10, 20 );
+} );
+
+test( 'modo: media vuelta al cambiar de fase, salvo dentro del corral', () => {
+  const g = createGame();
+  g.ghosts[ 0 ].x = 5;
+  g.ghosts[ 0 ].y = 5;
+  g.ghosts[ 0 ].dir = 'left';
+  g.ghosts[ 1 ].x = 13;
+  g.ghosts[ 1 ].y = 14;
+  g.ghosts[ 1 ].dir = 'up';
+  g.phaseTimer = 1;
+  updateGhostMode( g );
+  esIgual( g.ghosts[ 0 ].dir, 'right' );
+  esIgual( g.ghosts[ 1 ].dir, 'up' );
+} );
+
+test( 'modo: resetPositions devuelve a scatter', () => {
+  const g = createGame();
+  g.phase = 'chase';
+  g.phaseTimer = 10;
+  resetPositions( g );
+  esIgual( g.phase, 'scatter' );
+  esIgual( g.phaseTimer, 420 );
+} );
+
+// --- 8. Muros y puerta del corral ---
 
 test( 'muros: 600 frames y ningun fantasma entra en pared', () => {
   const g = createGame();
@@ -171,7 +230,7 @@ test( 'corral: los 4 fantasmas salen en 600 frames', () => {
   } );
 } );
 
-// --- 8. Movimiento de pacman intacto ---
+// --- 9. Movimiento de pacman intacto ---
 
 test( 'pacman: velocidad 1/8 celda por frame', () => {
   const g = createGame();
