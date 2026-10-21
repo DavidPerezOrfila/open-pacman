@@ -32,7 +32,7 @@ Open `src/index.html` directly in the browser (`file://` works). There is no dev
 
 Manual verification: load the page, check the console is clean, play. There is also an e2e harness with no dependencies: open `tests/e2e.html` in the browser (or `chrome --headless=new --dump-dom tests/e2e.html`); its summary line must read `E2E PASS`.
 
-Real-browser e2e (overlay, Start, keyboard, dots, ghost collision) in `tests/e2e.playwright.js`. It needs `playwright-cli` and an HTTP server because `playwright-cli` blocks `file://`; the run commands are in the file header. Pass `--headed` to `playwright-cli open` or the browser stays invisible (headless is the default); `playwright-cli` always launches its own Chrome with a temp profile, it does not reuse an open Chrome window. Success prints `E2E PASS 13/13` and exits 0; any failed check exits 1.
+Real-browser e2e (overlay, Start, keyboard, dots, power pellet, eaten ghosts) in `tests/e2e.playwright.js`. It needs `playwright-cli` and an HTTP server because `playwright-cli` blocks `file://`; the run commands are in the file header. Pass `--headed` to `playwright-cli open` or the browser stays invisible (headless is the default); `playwright-cli` always launches its own Chrome with a temp profile, it does not reuse an open Chrome window. Success prints `E2E PASS 18/18` and exits 0; any failed check exits 1.
 
 ## Architecture
 

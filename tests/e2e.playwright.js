@@ -1,6 +1,6 @@
 // e2e.playwright.js
 // E2E en Chrome real sobre src/index.html con playwright-cli: overlay, Start,
-// bucle de juego, teclado, dots y colision con fantasma.
+// bucle de juego, teclado, dots, power pellet y comer fantasmas asustados.
 //
 // Necesita un servidor local (playwright-cli bloquea file://). Desde la raiz:
 //   python -m http.server 8765 --bind 127.0.0.1
@@ -29,6 +29,9 @@ async page => {
   } );
 
   await page.goto( TEST_URL );
+  // Traer la ventana al frente: Chrome congela requestAnimationFrame si la
+  // ventana esta minimizada u oculta y el bucle del juego no avanza.
+  await page.bringToFront();
   await page.waitForFunction( () => typeof game === 'object' );
 
   const overlay = page.locator( '#overlay' );
@@ -55,26 +58,82 @@ async page => {
   check( '4 fantasmas', init.ghosts === 4, String( init.ghosts ) );
 
   await page.keyboard.press( 'ArrowLeft' );
-  await page.waitForTimeout( 800 );
+  // Esperas por estado del juego, no por reloj: cada tramo dura lo que tarde
+  // el bucle en recorrerlo, caiga lo que caiga el numero de fps.
+  let avanzado = true;
+  try {
+    await page.waitForFunction( () => game.pacman.x <= 6 && game.score > 0, null, { timeout: 15000 } );
+  } catch ( e ) { avanzado = false; }
   const after = await page.evaluate( () => ( {
     x: game.pacman.x, dir: game.pacman.dir, score: game.score, dots: game.dotsRemaining,
   } ) );
-  check( 'Pac-Man avanza a la izquierda', after.x < init.x && after.dir === 'left', init.x + ' -> ' + after.x );
-  check( 'come dots y suma SCORE', after.score > 0 && after.dots < init.dots, 'score=' + after.score + ' dots=' + after.dots );
+  check( 'Pac-Man avanza a la izquierda', avanzado && after.dir === 'left', init.x + ' -> ' + after.x );
+  check( 'come dots y suma SCORE', avanzado && after.score > 0 && after.dots < init.dots, 'score=' + after.score + ' dots=' + after.dots );
 
+  // Ruta a la power pellet de (1,23): arriba hasta la fila 20, izquierda hasta
+  // la columna 1 y abajo. La pared de las columnas 4-5 impide ir en recto.
   await page.keyboard.press( 'ArrowUp' );
-  let turned = true;
+  let girado = true;
   try {
-    await page.waitForFunction( () => game.pacman.dir === 'up', null, { timeout: 2500 } );
-  } catch ( e ) { turned = false; }
-  check( 'aplica el giro encolado (nextDir)', turned );
+    await page.waitForFunction( () => game.pacman.dir === 'up', null, { timeout: 10000 } );
+    await page.waitForFunction( () => game.pacman.y <= 20, null, { timeout: 15000 } );
+  } catch ( e ) { girado = false; }
+  check( 'aplica el giro encolado (nextDir)', girado );
 
+  await page.keyboard.press( 'ArrowLeft' );
+  try {
+    await page.waitForFunction( () => game.pacman.x <= 1, null, { timeout: 15000 } );
+  } catch ( e ) { girado = false; }
+  await page.keyboard.press( 'ArrowDown' );
+
+  let pellet = true;
+  try {
+    await page.waitForFunction( () => game.frightenedTimer > 0, null, { timeout: 15000 } );
+  } catch ( e ) { pellet = false; }
+  const scared = await page.evaluate( () => ( {
+    timer: game.frightenedTimer,
+    edible: game.ghosts.every( ( g ) => ghostEdible( game, g ) ),
+  } ) );
+  check( 'la power pellet activa frightened', pellet && scared.timer > 0, JSON.stringify( scared ) );
+  check( 'los 4 fantasmas son comestibles', scared.edible );
+
+  // Fantasma en la celda de Pac-Man: debe comerselo y volver al corral.
+  const antes = await page.evaluate( () => {
+    const g = game.ghosts[ 0 ];
+    g.x = game.pacman.x;
+    g.y = game.pacman.y;
+    return game.score;
+  } );
+  let comidoFantasma = true;
+  try {
+    await page.waitForFunction( () => game.ghosts[ 0 ].eaten === true, null, { timeout: 5000 } );
+  } catch ( e ) { comidoFantasma = false; }
+  const eaten = await page.evaluate( () => ( {
+    score: game.score,
+    x: game.ghosts[ 0 ].x,
+    y: game.ghosts[ 0 ].y,
+    eaten: game.ghosts[ 0 ].eaten,
+    edible: ghostEdible( game, game.ghosts[ 0 ] ),
+    start: { x: GHOST_STARTS[ 0 ].x, y: GHOST_STARTS[ 0 ].y },
+  } ) );
+  check( 'comer fantasma suma al menos 200', comidoFantasma && eaten.score - antes >= 200, ( eaten.score - antes ) + ' pts' );
+  check( 'el fantasma comido vuelve al corral', eaten.x === eaten.start.x && eaten.y === eaten.start.y, 'x=' + eaten.x + ' y=' + eaten.y );
+  check( 'el fantasma comido deja de ser comestible', eaten.eaten === true && eaten.edible === false );
+
+  // Fin del modo y fantasma normal encima: debe restar vida.
+  const vidas = await page.evaluate( () => {
+    game.frightenedTimer = 0;
+    game.ghosts[ 1 ].eaten = false;
+    game.ghosts[ 1 ].x = game.pacman.x;
+    game.ghosts[ 1 ].y = game.pacman.y;
+    return game.lives;
+  } );
   let lifeLost = true;
   try {
-    await page.waitForFunction( () => game.lives < 3 || game.state !== 'playing', null, { timeout: 25000 } );
+    await page.waitForFunction( ( v ) => game.lives < v, vidas, { timeout: 10000 } );
   } catch ( e ) { lifeLost = false; }
   const mid = await page.evaluate( () => ( { lives: game.lives, state: game.state } ) );
-  check( 'colision con fantasma resta vida', lifeLost, JSON.stringify( mid ) );
+  check( 'colision con fantasma normal resta vida', lifeLost, JSON.stringify( mid ) );
 
   check( 'consola sin errores', errors.length === 0, errors.join( ' | ' ) );
 
