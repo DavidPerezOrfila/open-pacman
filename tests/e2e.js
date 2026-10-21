@@ -1,5 +1,5 @@
 // e2e.js
-// Pruebas e2e de las specs 01 y 02 con los scripts reales del juego. Sin dependencias.
+// Pruebas e2e de las specs 01, 02 y 03 con los scripts reales del juego. Sin dependencias.
 
 // La pagina debe cargar limpia: todo error de consola cuenta como fallo.
 let erroresConsola = 0;
@@ -262,6 +262,154 @@ test( 'pacman: tunel con wrap en la fila 14', () => {
   p.dir = 'left';
   for ( let f = 0; f < 8; f++ ) update( g );
   cercano( p.x, 27 );
+} );
+
+// --- 10. Power pellets y modo frightened (spec 03) ---
+
+test( 'pellets: 4 en las esquinas del laberinto con tile 4', () => {
+  const esquinas = [ [ 1, 3 ], [ 26, 3 ], [ 1, 23 ], [ 26, 23 ] ];
+  for ( const [ x, y ] of esquinas ) esIgual( MAZE[ y ][ x ], 4 );
+  let pellets = 0;
+  for ( const row of MAZE ) for ( const v of row ) if ( v === 4 ) pellets++;
+  esIgual( pellets, 4 );
+} );
+
+test( 'pellets: createGame las cuenta para vaciar el laberinto', () => {
+  const g = createGame();
+  let dots = 0;
+  let pellets = 0;
+  for ( const row of MAZE ) for ( const v of row ) {
+    if ( v === 2 ) dots++;
+    if ( v === 4 ) pellets++;
+  }
+  // -1: la celda de inicio de Pacman arranca vacia.
+  esIgual( g.dotsRemaining, dots + pellets - 1 );
+} );
+
+test( 'canvas: la power pellet se dibuja mas grande que un dot', () => {
+  // Centro de la pellet en (1,3) mas 4 px: dentro del circulo grande.
+  colorEs( pixel( 1 * 20 + 10 + 4, 3 * 20 + 10 ), 255, 184, 151 );
+  // Misma distancia del centro de un dot en (1,1): fondo negro.
+  colorEs( pixel( 1 * 20 + 10 + 4, 1 * 20 + 10 ), 0, 0, 0 );
+} );
+
+test( 'pellet: comer suma 50, vacia la celda, resta 1 y arranca frightened', () => {
+  const g = createGame();
+  const p = g.pacman;
+  p.x = 1;
+  p.y = 3;
+  p.dir = 'right';
+  const restantes = g.dotsRemaining;
+  update( g );
+  esIgual( g.score, 50 );
+  esIgual( g.grid[ 3 ][ 1 ], 0 );
+  esIgual( g.dotsRemaining, restantes - 1 );
+  esIgual( g.frightenedTimer, 480 );
+} );
+
+test( 'frightened: 480 frames y media vuelta solo fuera del corral', () => {
+  const g = createGame();
+  g.ghosts[ 0 ].x = 5;
+  g.ghosts[ 0 ].y = 5;
+  g.ghosts[ 0 ].dir = 'left';
+  g.ghosts[ 1 ].dir = 'up'; // dentro del corral
+  startFrightened( g );
+  esIgual( g.frightenedTimer, 480 );
+  esIgual( g.ghosts[ 0 ].dir, 'right' );
+  esIgual( g.ghosts[ 1 ].dir, 'up' );
+} );
+
+test( 'frightened: se descuenta cada frame y acaba en 0', () => {
+  const g = createGame();
+  // Pacman aparcado en un muro: partida determinista, sin resets.
+  g.pacman.x = 5;
+  g.pacman.y = 23;
+  g.pacman.dir = 'left';
+  g.frightenedTimer = 480;
+  update( g );
+  esIgual( g.frightenedTimer, 479 );
+  for ( let f = 0; f < 479; f++ ) update( g );
+  esIgual( g.frightenedTimer, 0 );
+  esIgual( frightened( g ), false );
+} );
+
+test( 'frightened: target = esquina opuesta a pacman para los 4', () => {
+  const g = createGame();
+  g.pacman.x = 5;
+  g.pacman.y = 23;
+  g.frightenedTimer = 480;
+  for ( let i = 0; i < 4; i++ ) celdaEs( ghostTarget( g, i ), 27 - 5, 30 - 23 );
+} );
+
+test( 'frightened: 1/20 celda por frame; al terminar vuelve a 1/10', () => {
+  const conMiedo = createGame();
+  conMiedo.ghosts[ 0 ].x = 5;
+  conMiedo.ghosts[ 0 ].y = 5;
+  conMiedo.ghosts[ 0 ].dir = 'left';
+  conMiedo.pacman.x = 5;
+  conMiedo.pacman.y = 23;
+  conMiedo.pacman.dir = 'left';
+  conMiedo.frightenedTimer = 480;
+  update( conMiedo );
+  const andado = Math.abs( conMiedo.ghosts[ 0 ].x - 5 ) + Math.abs( conMiedo.ghosts[ 0 ].y - 5 );
+  cercano( andado, 0.05 );
+
+  const normal = createGame();
+  normal.ghosts[ 0 ].x = 5;
+  normal.ghosts[ 0 ].y = 5;
+  normal.ghosts[ 0 ].dir = 'left';
+  normal.pacman.x = 5;
+  normal.pacman.y = 23;
+  normal.pacman.dir = 'left';
+  update( normal );
+  const andadoNormal = Math.abs( normal.ghosts[ 0 ].x - 5 ) + Math.abs( normal.ghosts[ 0 ].y - 5 );
+  cercano( andadoNormal, 0.1 );
+} );
+
+test( 'frightened: chocar con un fantasma azul no resta vida', () => {
+  const g = createGame();
+  g.pacman.x = 5;
+  g.pacman.y = 5;
+  g.pacman.dir = 'left';
+  g.frightenedTimer = 480;
+  g.ghosts[ 0 ].x = 5;
+  g.ghosts[ 0 ].y = 5;
+  update( g );
+  esIgual( g.lives, 3 );
+} );
+
+test( 'colision normal: sigue restando vida', () => {
+  const g = createGame();
+  g.pacman.x = 5;
+  g.pacman.y = 5;
+  g.pacman.dir = 'left';
+  g.ghosts[ 0 ].x = 5;
+  g.ghosts[ 0 ].y = 5;
+  update( g );
+  esIgual( g.lives, 2 );
+} );
+
+test( 'pellet: no pausa ni reinicia el temporizador scatter/chase', () => {
+  const g = createGame();
+  g.pacman.x = 1;
+  g.pacman.y = 3;
+  g.pacman.dir = 'right';
+  g.phaseTimer = 100;
+  update( g );
+  esIgual( g.phase, 'scatter' );
+  esIgual( g.phaseTimer, 99 );
+} );
+
+test( 'victoria: vaciar el laberinto incluidas las pellets gana', () => {
+  const g = createGame();
+  for ( const row of g.grid ) row.fill( 0 );
+  g.dotsRemaining = 0;
+  g.frightenedTimer = 480; // sin fantasmas peligrosos en el frame final
+  g.pacman.x = 5;
+  g.pacman.y = 23;
+  g.pacman.dir = 'left';
+  update( g );
+  esIgual( g.state, 'won' );
 } );
 
 // --- Consola limpia (se evalua al final) ---

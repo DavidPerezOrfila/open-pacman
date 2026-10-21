@@ -1,7 +1,7 @@
 // game.js
 // Estado y reglas. Depende de globals de maze.js: MAZE, TUNNEL_ROW,
 // PACMAN_START, GHOST_STARTS. Y de ghosts.js: GHOSTS, PEN_EXIT, insidePen,
-// ghostTarget, createGhostMode, updateGhostMode.
+// ghostTarget, createGhostMode, updateGhostMode, frightened, startFrightened.
 
 const DIRS = {
   left: { x: -1, y: 0 },
@@ -13,6 +13,7 @@ const OPPOSITE = { left: 'right', right: 'left', up: 'down', down: 'up' };
 
 const PACMAN_SPEED = 0.125; // 1/8 celda/frame -> alinea cada 8 frames
 const GHOST_SPEED = 0.1;    // 1/10 celda/frame
+const FRIGHTENED_SPEED = 0.05; // 1/20 celda/frame: huida a la mitad de velocidad
 
 // Crea una partida nueva. Copia MAZE (pristino) a game.grid para poder comer
 // dots sin destruir el original, y reiniciar.
@@ -21,8 +22,9 @@ function createGame() {
   // La celda de inicio de Pacman arranca sin dot.
   grid[ PACMAN_START.y ][ PACMAN_START.x ] = 0;
 
+  // Cuentan dots y power pellets: vaciar el laberinto gana la partida.
   let dots = 0;
-  for ( const row of grid ) for ( const v of row ) if ( v === 2 ) dots++;
+  for ( const row of grid ) for ( const v of row ) if ( v === 2 || v === 4 ) dots++;
 
   return {
     state: 'start',
@@ -95,11 +97,13 @@ function movePacman( game ) {
       p.dir = p.nextDir;
       p.nextDir = null;
     }
-    // Comer dot.
-    if ( grid[ p.y ][ p.x ] === 2 ) {
+    // Comer dot (2) o power pellet (4).
+    const tile = grid[ p.y ][ p.x ];
+    if ( tile === 2 || tile === 4 ) {
       grid[ p.y ][ p.x ] = 0;
-      game.score += 10;
+      game.score += tile === 4 ? 50 : 10;
       game.dotsRemaining--;
+      if ( tile === 4 ) startFrightened( game );
     }
     // Si no puede seguir, se detiene en la celda.
     if ( !canMove( grid, p.x, p.y, p.dir, 'pacman' ) ) return;
@@ -150,8 +154,9 @@ function moveGhost( game, g, i ) {
   }
 
   const d = DIRS[ g.dir ];
-  g.x += d.x * g.speed;
-  g.y += d.y * g.speed;
+  const speed = frightened( game ) ? FRIGHTENED_SPEED : g.speed;
+  g.x += d.x * speed;
+  g.y += d.y * speed;
   wrapTunnel( g, width );
 }
 
@@ -178,15 +183,18 @@ function update( game ) {
   movePacman( game );
   game.ghosts.forEach( ( g, i ) => moveGhost( game, g, i ) );
 
-  for ( const g of game.ghosts ) {
-    if ( collides( game.pacman, g ) ) {
-      game.lives--;
-      if ( game.lives <= 0 ) {
-        game.state = 'lost';
-        return;
+  // Con un fantasma frightened no hay colision: Pac-Man pasa de largo.
+  if ( !frightened( game ) ) {
+    for ( const g of game.ghosts ) {
+      if ( collides( game.pacman, g ) ) {
+        game.lives--;
+        if ( game.lives <= 0 ) {
+          game.state = 'lost';
+          return;
+        }
+        resetPositions( game );
+        break;
       }
-      resetPositions( game );
-      break;
     }
   }
 

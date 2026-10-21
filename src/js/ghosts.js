@@ -1,5 +1,5 @@
 // ghosts.js
-// Personalidades de los 4 fantasmas y modos scatter/chase.
+// Personalidades de los 4 fantasmas y modos scatter/chase/frightened.
 // Depende de globals de game.js: DIRS, OPPOSITE.
 // Mapeo de indices de GHOST_STARTS: 0 blinky, 1 pinky, 2 inky, 3 clyde.
 
@@ -12,6 +12,7 @@ function pacmanCell( game ) {
 const PEN_EXIT = { x: 13, y: 11 };
 const SCATTER_FRAMES = 7 * 60; // 7s a 60fps
 const CHASE_FRAMES = 20 * 60;  // 20s
+const FRIGHTENED_FRAMES = 8 * 60; // 8s
 
 function insidePen( g ) {
   const x = Math.round( g.x );
@@ -69,17 +70,33 @@ const GHOSTS = [
 ];
 
 window.GHOSTS = GHOSTS;
+window.frightened = frightened;
+window.startFrightened = startFrightened;
 
-// --- Modos scatter / chase ---
+// --- Modos scatter / chase / frightened ---
 
 // Estado inicial de la partida: se esparce sobre game en createGame().
 function createGhostMode() {
-  return { phase: 'scatter', phaseTimer: SCATTER_FRAMES };
+  return { phase: 'scatter', phaseTimer: SCATTER_FRAMES, frightenedTimer: 0 };
+}
+
+function frightened( game ) {
+  return game.frightenedTimer > 0;
+}
+
+// Power pellet comida: reinicia el temporizador y, como el cambio de fase,
+// los fantasmas de fuera del corral dan media vuelta.
+function startFrightened( game ) {
+  game.frightenedTimer = FRIGHTENED_FRAMES;
+  for ( const g of game.ghosts ) {
+    if ( !insidePen( g ) ) g.dir = OPPOSITE[ g.dir ];
+  }
 }
 
 // Al agotarse el temporizador cambia de fase; los fantasmas de fuera del
 // corral dan media vuelta (fuera no hay decision en una celda alineada).
 function updateGhostMode( game ) {
+  if ( game.frightenedTimer > 0 ) game.frightenedTimer--;
   game.phaseTimer--;
   if ( game.phaseTimer > 0 ) return;
   game.phase = game.phase === 'scatter' ? 'chase' : 'scatter';
@@ -89,7 +106,17 @@ function updateGhostMode( game ) {
   }
 }
 
-// En scatter cada fantasma vuelve a su esquina; en chase usa su personalidad.
+// En frightened cada fantasma huye a la esquina opuesta a Pac-Man respecto
+// al centro del laberinto.
+function frightenedTarget( game ) {
+  const c = pacmanCell( game );
+  return { x: game.grid[ 0 ].length - 1 - c.x, y: game.grid.length - 1 - c.y };
+}
+
+// Precedencia: frightened (huida) > scatter (corner) > chase (personalidad).
 function ghostTarget( game, i ) {
+  if ( frightened( game ) ) return frightenedTarget( game );
   return game.phase === 'scatter' ? GHOSTS[ i ].corner : GHOSTS[ i ].target( game );
 }
+
+window.frightenedTarget = frightenedTarget;

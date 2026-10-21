@@ -43,6 +43,7 @@ Five classic `<script>` files, loaded in this order in `src/index.html`. There a
 - `src/js/main.js` → loop, keyboard, overlay screens
 
 Consequences an agent will otherwise get wrong:
+
 - Adding a new file means adding a `<script>` tag in the right position. Order matters: `maze` → `ghosts` → `game` → `render` → `main`.
 - A new global must be explicitly assigned to `window` or other files won't see it.
 
