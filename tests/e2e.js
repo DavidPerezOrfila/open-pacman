@@ -1,5 +1,5 @@
 // e2e.js
-// Pruebas e2e de las specs 01, 02 y 03 con los scripts reales del juego. Sin dependencias.
+// Pruebas e2e de las specs 01, 02, 03 y 04 con los scripts reales del juego. Sin dependencias.
 
 // La pagina debe cargar limpia: todo error de consola cuenta como fallo.
 let erroresConsola = 0;
@@ -366,16 +366,130 @@ test( 'frightened: 1/20 celda por frame; al terminar vuelve a 1/10', () => {
   cercano( andadoNormal, 0.1 );
 } );
 
-test( 'frightened: chocar con un fantasma azul no resta vida', () => {
+test( 'frightened: tocar un fantasma comestible lo come y no resta vida', () => {
   const g = createGame();
   g.pacman.x = 5;
   g.pacman.y = 5;
   g.pacman.dir = 'left';
   g.frightenedTimer = 480;
+  g.grid[ 5 ][ 5 ] = 0; // sin dot: el score solo cuenta el fantasma
   g.ghosts[ 0 ].x = 5;
   g.ghosts[ 0 ].y = 5;
   update( g );
   esIgual( g.lives, 3 );
+  esIgual( g.score, 200 );
+} );
+
+// --- 11. Comer fantasmas asustados (spec 04) ---
+
+test( 'comer fantasma: 200, 400, 800 y 1600 dentro de la misma pellet', () => {
+  const g = createGame();
+  g.pacman.x = 5;
+  g.pacman.y = 5;
+  g.pacman.dir = 'left';
+  g.frightenedTimer = 480;
+  g.grid[ 5 ][ 5 ] = 0; // sin dot: el score solo cuenta fantasmas
+  const puntos = [];
+  for ( let i = 0; i < 4; i++ ) {
+    const antes = g.score;
+    g.pacman.x = 5;
+    g.pacman.y = 5;
+    g.ghosts[ i ].x = 5;
+    g.ghosts[ i ].y = 5;
+    update( g );
+    puntos.push( g.score - antes );
+  }
+  esIgual( puntos.join( ',' ), '200,400,800,1600' );
+  esIgual( g.ghostsEaten, 4 );
+} );
+
+test( 'comer fantasma: otra pellet reinicia la escala a 200', () => {
+  const g = createGame();
+  g.pacman.x = 5;
+  g.pacman.y = 5;
+  g.pacman.dir = 'left';
+  g.frightenedTimer = 480;
+  g.grid[ 5 ][ 5 ] = 0; // sin dot: el score solo cuenta fantasmas
+  g.ghosts[ 0 ].x = 5;
+  g.ghosts[ 0 ].y = 5;
+  update( g );
+  esIgual( g.score, 200 );
+  startFrightened( g );
+  esIgual( g.ghostsEaten, 0 );
+  g.ghosts[ 1 ].x = 5;
+  g.ghosts[ 1 ].y = 5;
+  update( g );
+  esIgual( g.score, 400 );
+} );
+
+test( 'comer fantasma: vuelve al corral mirando arriba y deja de ser comestible', () => {
+  const g = createGame();
+  g.pacman.x = 5;
+  g.pacman.y = 5;
+  g.pacman.dir = 'left';
+  g.frightenedTimer = 480;
+  g.ghosts[ 2 ].x = 5;
+  g.ghosts[ 2 ].y = 5;
+  update( g );
+  celdaEs( g.ghosts[ 2 ], GHOST_STARTS[ 2 ].x, GHOST_STARTS[ 2 ].y );
+  esIgual( g.ghosts[ 2 ].dir, 'up' );
+  esIgual( ghostEdible( g, g.ghosts[ 2 ] ), false );
+  esIgual( ghostEdible( g, g.ghosts[ 0 ] ), true );
+} );
+
+test( 'comer fantasma: uno ya comido no vuelve a puntuar ni resta vida', () => {
+  const g = createGame();
+  g.pacman.x = 5;
+  g.pacman.y = 5;
+  g.pacman.dir = 'left';
+  g.frightenedTimer = 480;
+  g.grid[ 5 ][ 5 ] = 0; // sin dot: el score solo cuenta fantasmas
+  g.ghosts[ 0 ].eaten = true;
+  g.ghosts[ 0 ].x = 5;
+  g.ghosts[ 0 ].y = 5;
+  const antes = g.score;
+  update( g );
+  esIgual( g.score, antes );
+  esIgual( g.lives, 3 );
+} );
+
+test( 'comer fantasma: el comido ya no huye ni va a media velocidad', () => {
+  const g = createGame();
+  g.pacman.x = 5;
+  g.pacman.y = 23;
+  g.pacman.dir = 'left';
+  g.frightenedTimer = 480;
+  g.ghosts[ 0 ].x = 5;
+  g.ghosts[ 0 ].y = 5;
+  g.ghosts[ 0 ].dir = 'left';
+  g.ghosts[ 0 ].eaten = true;
+  update( g );
+  const andado = Math.abs( g.ghosts[ 0 ].x - 5 ) + Math.abs( g.ghosts[ 0 ].y - 5 );
+  cercano( andado, 0.1 );
+  celdaEs( ghostTarget( g, 0 ), GHOSTS[ 0 ].corner.x, GHOSTS[ 0 ].corner.y );
+} );
+
+test( 'frightened: al acabar los comidos vuelven a ser normales', () => {
+  const g = createGame();
+  g.pacman.x = 5;
+  g.pacman.y = 23;
+  g.pacman.dir = 'left';
+  g.ghosts[ 0 ].eaten = true;
+  g.frightenedTimer = 1;
+  update( g );
+  esIgual( g.frightenedTimer, 0 );
+  esIgual( g.ghosts[ 0 ].eaten, false );
+} );
+
+test( 'canvas: el fantasma comestible se pinta azul y el comido con su color', () => {
+  const s = GHOST_STARTS[ 0 ];
+  const g = createGame();
+  g.frightenedTimer = 480;
+  draw( ctx, g, 1 );
+  colorEs( pixel( s.x * 20 + 10, s.y * 20 + 15 ), 33, 33, 255 );
+  g.ghosts[ 0 ].eaten = true;
+  draw( ctx, g, 1 );
+  colorEs( pixel( s.x * 20 + 10, s.y * 20 + 15 ), 255, 0, 0 );
 } );
 
 test( 'colision normal: sigue restando vida', () => {
