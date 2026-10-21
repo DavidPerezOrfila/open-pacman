@@ -13,6 +13,7 @@ const OPPOSITE = { left: 'right', right: 'left', up: 'down', down: 'up' };
 
 const PACMAN_SPEED = 0.125; // 1/8 celda/frame -> alinea cada 8 frames
 const GHOST_SPEED = 0.1;    // 1/10 celda/frame
+const FRIGHTENED_SPEED = 0.05; // 1/20 celda/frame: huida a la mitad de velocidad
 
 // Crea una partida nueva. Copia MAZE (pristino) a game.grid para poder comer
 // dots sin destruir el original, y reiniciar.
@@ -153,8 +154,9 @@ function moveGhost( game, g, i ) {
   }
 
   const d = DIRS[ g.dir ];
-  g.x += d.x * g.speed;
-  g.y += d.y * g.speed;
+  const speed = frightened( game ) ? FRIGHTENED_SPEED : g.speed;
+  g.x += d.x * speed;
+  g.y += d.y * speed;
   wrapTunnel( g, width );
 }
 
@@ -181,15 +183,18 @@ function update( game ) {
   movePacman( game );
   game.ghosts.forEach( ( g, i ) => moveGhost( game, g, i ) );
 
-  for ( const g of game.ghosts ) {
-    if ( collides( game.pacman, g ) ) {
-      game.lives--;
-      if ( game.lives <= 0 ) {
-        game.state = 'lost';
-        return;
+  // Con un fantasma frightened no hay colision: Pac-Man pasa de largo.
+  if ( !frightened( game ) ) {
+    for ( const g of game.ghosts ) {
+      if ( collides( game.pacman, g ) ) {
+        game.lives--;
+        if ( game.lives <= 0 ) {
+          game.state = 'lost';
+          return;
+        }
+        resetPositions( game );
+        break;
       }
-      resetPositions( game );
-      break;
     }
   }
 
