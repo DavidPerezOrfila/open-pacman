@@ -1,7 +1,7 @@
 // game.js
 // Estado y reglas. Depende de globals de maze.js: MAZE, TUNNEL_ROW,
 // PACMAN_START, GHOST_STARTS. Y de ghosts.js: GHOSTS, PEN_EXIT, insidePen,
-// ghostTarget, createGhostMode, updateGhostMode.
+// ghostTarget, createGhostMode, updateGhostMode, frightened, startFrightened.
 
 const DIRS = {
   left: { x: -1, y: 0 },
@@ -102,6 +102,7 @@ function movePacman( game ) {
       grid[ p.y ][ p.x ] = 0;
       game.score += tile === 4 ? 50 : 10;
       game.dotsRemaining--;
+      if ( tile === 4 ) startFrightened( game );
     }
     // Si no puede seguir, se detiene en la celda.
     if ( !canMove( grid, p.x, p.y, p.dir, 'pacman' ) ) return;
