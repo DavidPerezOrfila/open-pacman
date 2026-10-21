@@ -6,6 +6,7 @@ const TILE = 20;
 const WALL_COLOR = '#2121ff';
 const DOOR_COLOR = '#ffb8ff';
 const DOT_COLOR = '#ffb897';
+const FRIGHTENED_COLOR = '#2121ff'; // azul del fantasma comestible
 
 function cellCenter( x, y ) {
   return { cx: x * TILE + TILE / 2, cy: y * TILE + TILE / 2 };
@@ -159,7 +160,7 @@ function draw( ctx, game, frame ) {
   drawDoor( ctx, grid );
   drawDots( ctx, grid );
   drawPacman( ctx, game.pacman, frame );
-  game.ghosts.forEach( ( g, i ) => drawGhost( ctx, g, GHOSTS[ i ].color ) );
+  game.ghosts.forEach( ( g, i ) => drawGhost( ctx, g, ghostEdible( game, g ) ? FRIGHTENED_COLOR : GHOSTS[ i ].color ) );
   drawHUD( ctx, game, W );
 }
 
