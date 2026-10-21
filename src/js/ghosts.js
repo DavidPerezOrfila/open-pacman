@@ -106,7 +106,17 @@ function updateGhostMode( game ) {
   }
 }
 
-// En scatter cada fantasma vuelve a su esquina; en chase usa su personalidad.
+// En frightened cada fantasma huye a la esquina opuesta a Pac-Man respecto
+// al centro del laberinto.
+function frightenedTarget( game ) {
+  const c = pacmanCell( game );
+  return { x: game.grid[ 0 ].length - 1 - c.x, y: game.grid.length - 1 - c.y };
+}
+
+// Precedencia: frightened (huida) > scatter (corner) > chase (personalidad).
 function ghostTarget( game, i ) {
+  if ( frightened( game ) ) return frightenedTarget( game );
   return game.phase === 'scatter' ? GHOSTS[ i ].corner : GHOSTS[ i ].target( game );
 }
+
+window.frightenedTarget = frightenedTarget;
