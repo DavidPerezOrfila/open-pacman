@@ -13,6 +13,7 @@ const PEN_EXIT = { x: 13, y: 11 };
 const SCATTER_FRAMES = 7 * 60; // 7s a 60fps
 const CHASE_FRAMES = 20 * 60;  // 20s
 const FRIGHTENED_FRAMES = 8 * 60; // 8s
+const GHOST_POINTS = 200; // base; el fantasma n de la pellet vale 200 * 2^n, tope 1600
 
 function insidePen( g ) {
   const x = Math.round( g.x );
@@ -71,23 +72,35 @@ const GHOSTS = [
 
 window.GHOSTS = GHOSTS;
 window.frightened = frightened;
+window.ghostEdible = ghostEdible;
 window.startFrightened = startFrightened;
 
 // --- Modos scatter / chase / frightened ---
 
 // Estado inicial de la partida: se esparce sobre game en createGame().
 function createGhostMode() {
-  return { phase: 'scatter', phaseTimer: SCATTER_FRAMES, frightenedTimer: 0 };
+  return {
+    phase: 'scatter',
+    phaseTimer: SCATTER_FRAMES,
+    frightenedTimer: 0,
+    ghostsEaten: 0,
+  };
 }
 
 function frightened( game ) {
   return game.frightenedTimer > 0;
 }
 
-// Power pellet comida: reinicia el temporizador y, como el cambio de fase,
-// los fantasmas de fuera del corral dan media vuelta.
+// Comestible = modo activo y ese fantasma no ha sido comido en esta pellet.
+function ghostEdible( game, g ) {
+  return frightened( game ) && !g.eaten;
+}
+
+// Power pellet comida: reinicia el temporizador y la escala de puntos, y como
+// el cambio de fase, los fantasmas de fuera del corral dan media vuelta.
 function startFrightened( game ) {
   game.frightenedTimer = FRIGHTENED_FRAMES;
+  game.ghostsEaten = 0;
   for ( const g of game.ghosts ) {
     if ( !insidePen( g ) ) g.dir = OPPOSITE[ g.dir ];
   }
@@ -95,8 +108,14 @@ function startFrightened( game ) {
 
 // Al agotarse el temporizador cambia de fase; los fantasmas de fuera del
 // corral dan media vuelta (fuera no hay decision en una celda alineada).
+// Al llegar a 0 los comidos dejan de estarlo: vuelven a ser normales.
 function updateGhostMode( game ) {
-  if ( game.frightenedTimer > 0 ) game.frightenedTimer--;
+  if ( game.frightenedTimer > 0 ) {
+    game.frightenedTimer--;
+    if ( game.frightenedTimer === 0 ) {
+      for ( const g of game.ghosts ) g.eaten = false;
+    }
+  }
   game.phaseTimer--;
   if ( game.phaseTimer > 0 ) return;
   game.phase = game.phase === 'scatter' ? 'chase' : 'scatter';
@@ -113,9 +132,10 @@ function frightenedTarget( game ) {
   return { x: game.grid[ 0 ].length - 1 - c.x, y: game.grid.length - 1 - c.y };
 }
 
-// Precedencia: frightened (huida) > scatter (corner) > chase (personalidad).
+// Precedencia: huida (frightened comestible) > scatter (corner) > chase
+// (personalidad). Un fantasma ya comido persigue normal aunque el modo siga.
 function ghostTarget( game, i ) {
-  if ( frightened( game ) ) return frightenedTarget( game );
+  if ( ghostEdible( game, game.ghosts[ i ] ) ) return frightenedTarget( game );
   return game.phase === 'scatter' ? GHOSTS[ i ].corner : GHOSTS[ i ].target( game );
 }
 
