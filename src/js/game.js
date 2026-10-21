@@ -1,7 +1,7 @@
 // game.js
 // Estado y reglas. Depende de globals de maze.js: MAZE, TUNNEL_ROW,
 // PACMAN_START, GHOST_STARTS. Y de ghosts.js: GHOSTS, PEN_EXIT, insidePen,
-// ghostTarget, createGhostMode, updateGhostMode, frightened, startFrightened.
+// ghostTarget, createGhostMode, updateGhostMode, ghostEdible, startFrightened.
 
 const DIRS = {
   left: { x: -1, y: 0 },
@@ -45,6 +45,7 @@ function createGame() {
       y: g.y,
       dir: 'up',
       speed: GHOST_SPEED,
+      eaten: false,
     } ) ),
   };
 }
@@ -154,7 +155,7 @@ function moveGhost( game, g, i ) {
   }
 
   const d = DIRS[ g.dir ];
-  const speed = frightened( game ) ? FRIGHTENED_SPEED : g.speed;
+  const speed = ghostEdible( game, g ) ? FRIGHTENED_SPEED : g.speed;
   g.x += d.x * speed;
   g.y += d.y * speed;
   wrapTunnel( g, width );
@@ -171,6 +172,7 @@ function resetPositions( game ) {
     g.x = GHOST_STARTS[ i ].x;
     g.y = GHOST_STARTS[ i ].y;
     g.dir = 'up';
+    g.eaten = false;
   } );
 }
 
@@ -178,24 +180,38 @@ function collides( a, b ) {
   return Math.abs( a.x - b.x ) < 0.5 && Math.abs( a.y - b.y ) < 0.5;
 }
 
+// Fantasma comido: puntos en escala 200/400/800/1600 dentro de la misma pellet
+// y vuelta directa al corral. Queda `eaten` hasta que acabe el frightened.
+function eatGhost( game, g, i ) {
+  game.score += GHOST_POINTS * Math.pow( 2, Math.min( game.ghostsEaten, 3 ) );
+  game.ghostsEaten++;
+  g.eaten = true;
+  g.x = GHOST_STARTS[ i ].x;
+  g.y = GHOST_STARTS[ i ].y;
+  g.dir = 'up';
+}
+
 function update( game ) {
   updateGhostMode( game );
   movePacman( game );
   game.ghosts.forEach( ( g, i ) => moveGhost( game, g, i ) );
 
-  // Con un fantasma frightened no hay colision: Pac-Man pasa de largo.
-  if ( !frightened( game ) ) {
-    for ( const g of game.ghosts ) {
-      if ( collides( game.pacman, g ) ) {
-        game.lives--;
-        if ( game.lives <= 0 ) {
-          game.state = 'lost';
-          return;
-        }
-        resetPositions( game );
-        break;
-      }
+  for ( let i = 0; i < game.ghosts.length; i++ ) {
+    const g = game.ghosts[ i ];
+    if ( !collides( game.pacman, g ) ) continue;
+    // Comestible: se lo come Pac-Man. Ya comido en esta pellet: no mata.
+    if ( ghostEdible( game, g ) ) {
+      eatGhost( game, g, i );
+      continue;
     }
+    if ( g.eaten ) continue;
+    game.lives--;
+    if ( game.lives <= 0 ) {
+      game.state = 'lost';
+      return;
+    }
+    resetPositions( game );
+    break;
   }
 
   if ( game.dotsRemaining <= 0 ) game.state = 'won';
